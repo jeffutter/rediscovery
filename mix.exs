@@ -40,6 +40,7 @@ defmodule Rediscovery.MixProject do
     [
       {:redix, "~> 1.0.0"},
       {:nimble_options, "~> 0.3.0"},
+      {:telemetry, "~> 0.4"},
       {:local_cluster, "~> 1.2", only: [:test]},
       {:ex_doc, "~> 0.20", only: :dev, runtime: false}
     ]
