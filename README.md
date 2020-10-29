@@ -25,16 +25,24 @@ See `lib/rediscovery.ex` for other options.
 
 Rediscovery accepts a function to be called when node changes occur.
 
-The node change function receives `:added` or `:removed` as it's first argument followed by the node name and any metadata provided when the node was registered.
+The node change function receives the following arguments:
+
+- `:reset, nil, %{}` - This indicates the Rediscovery state was reset (either on initial startup or if the supervisor restarts the state process).
+- `:added, node, metadata` - When a node is added
+- `:removed, node, metadata` - When a node is removed
 
 ```elixir
 defmodule MyApp do
+  def node_change(:reset, _, _) do
+    Enum.each(Node.list(), &Node.disconnect/1)
+  end
+
   def node_change(:added, node, _metadata) do
-    :net_kernel.connect_node(node)
+    Node.connect(node)
   end
 
   def node_change(:removed, node, _metadata) do
-    :erlang.disconnect_node(node)
+    Node.disconnect(node)
   end
 end
 ```

@@ -21,7 +21,14 @@ defmodule Rediscovery.State do
 
   @impl true
   def init(state) do
-    {:ok, state}
+    {:ok, state, {:continue, :reset}}
+  end
+
+  @impl true
+  def handle_continue(:reset, {_nodes, %{node_change_fn: node_change_fn}} = state) do
+    node_change_fn.(:reset, nil, %{})
+
+    {:noreply, state}
   end
 
   @impl true
