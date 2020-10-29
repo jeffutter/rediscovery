@@ -27,8 +27,7 @@ defmodule Rediscovery.PubSub do
 
   @impl true
   def handle_info(
-        {:redix_pubsub, _pubsub, ref, :pmessage,
-         %{channel: "__keyspace@0__:" <> key, payload: "set"}},
+        {:redix_pubsub, _pubsub, ref, :pmessage, %{channel: "__keyspace@0__:" <> key, payload: "set"}},
         %{redix: redix, prefix: prefix, ref: ref} = opts
       ) do
     node = String.trim_leading(key, prefix <> ":")
@@ -44,8 +43,7 @@ defmodule Rediscovery.PubSub do
 
   @impl true
   def handle_info(
-        {:redix_pubsub, _pubsub, ref, :pmessage,
-         %{channel: "__keyspace@0__:" <> key, payload: "expired"}},
+        {:redix_pubsub, _pubsub, ref, :pmessage, %{channel: "__keyspace@0__:" <> key, payload: "expired"}},
         %{prefix: prefix, ref: ref} = opts
       ) do
     node = String.trim_leading(key, prefix <> ":")
@@ -56,8 +54,7 @@ defmodule Rediscovery.PubSub do
   end
 
   def handle_info(
-        {:redix_pubsub, _pubsub, ref, :pmessage,
-         %{channel: "__keyspace@0__:" <> key, payload: "del"}},
+        {:redix_pubsub, _pubsub, ref, :pmessage, %{channel: "__keyspace@0__:" <> key, payload: "del"}},
         %{prefix: prefix, ref: ref} = opts
       ) do
     node = String.trim_leading(key, prefix <> ":")
@@ -69,8 +66,7 @@ defmodule Rediscovery.PubSub do
 
   @impl true
   def handle_info(
-        {:redix_pubsub, _pubsub, ref, :pmessage,
-         %{channel: "__keyspace@0__:" <> _key, payload: "expire"}},
+        {:redix_pubsub, _pubsub, ref, :pmessage, %{channel: "__keyspace@0__:" <> _key, payload: "expire"}},
         %{ref: ref} = opts
       ) do
     {:noreply, opts}

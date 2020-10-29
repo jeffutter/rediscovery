@@ -43,8 +43,7 @@ defmodule Rediscovery.Updater do
 
     key = prefix <> ":" <> to_string(Node.self())
 
-    {:ok, "OK"} =
-      Redix.command(redix, ["SET", key, :erlang.term_to_binary(metadata), "PX", key_expiration])
+    {:ok, "OK"} = Redix.command(redix, ["SET", key, :erlang.term_to_binary(metadata), "PX", key_expiration])
 
     debug("Updater: SET #{key} = #{inspect(metadata)}")
 
