@@ -8,8 +8,6 @@ defmodule Rediscovery do
 
   alias Rediscovery.State
 
-  import Rediscovery.Logger
-
   @options_schema [
     host: [
       type: :string,
@@ -38,20 +36,11 @@ defmodule Rediscovery do
     metadata_fn: [
       type: {:fun, 0},
       default: &__MODULE__.default_metadata_fn/0
-    ],
-    node_change_fn: [
-      type: {:fun, 3},
-      default: &__MODULE__.default_node_change_fn/3
     ]
   ]
 
   def default_metadata_fn do
     %{}
-  end
-
-  def default_node_change_fn(change, node, metadata) do
-    debug("Change: #{change} - #{node} - #{inspect(metadata)}")
-    :ok
   end
 
   def child_spec(opts) do

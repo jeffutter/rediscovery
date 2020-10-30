@@ -1,55 +1,66 @@
 defmodule Rediscovery.StateTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: false
 
   alias Rediscovery.State
 
-  test "Calls the node_change_fn when nodes are added" do
+  defmodule FakeListener do
+    use GenServer
+
+    def start_link(pid) do
+      GenServer.start_link(__MODULE__, pid, [])
+    end
+
+    def init(pid) do
+      :pg2.create(Rediscovery.Listener)
+      :ok = :pg2.join(Rediscovery.Listener, self())
+      {:ok, pid}
+    end
+
+    def handle_cast({:change, new_nodes}, pid) do
+      send(pid, {:change, self(), new_nodes})
+
+      {:noreply, pid}
+    end
+  end
+
+  test "Broadcasts a change event when nodes are added" do
     me = self()
     this_node = Node.self()
 
-    node_change_fn = fn change, node, metadata ->
-      send(me, {change, node, metadata})
-    end
-
-    start_supervised({State, %{node_change_fn: node_change_fn}})
+    start_supervised(State)
+    {:ok, listener_pid} = start_supervised({FakeListener, me})
 
     State.add(this_node, %{})
 
-    assert_receive {:added, ^this_node, %{}}
+    assert_receive {:change, ^listener_pid, [{^this_node, %{}}]}
   end
 
-  test "Calls the node_change_fn when nodes are removed" do
+  test "Broadcasts a change event when nodes are removed" do
     me = self()
     this_node = Node.self()
 
-    node_change_fn = fn change, node, metadata ->
-      send(me, {change, node, metadata})
-    end
-
-    start_supervised({State, %{node_change_fn: node_change_fn}})
+    start_supervised(State)
+    {:ok, listener_pid} = start_supervised({FakeListener, me})
 
     State.add(this_node, %{})
     State.remove(this_node)
 
-    assert_receive {:removed, ^this_node, %{}}
+    assert_receive {:change, ^listener_pid, []}
   end
 
-  test "Calls the node_change_fn with a remove AND add event when metadata changes" do
+  test "Doesn't broadcast a change if the node is already known about" do
     me = self()
     this_node = Node.self()
 
-    node_change_fn = fn change, node, metadata ->
-      send(me, {change, node, metadata})
-    end
+    start_supervised(State)
+    {:ok, listener_pid} = start_supervised({FakeListener, me})
 
-    start_supervised({State, %{node_change_fn: node_change_fn}})
+    State.add(this_node, %{})
 
-    State.add(this_node, %{host: "old.host"})
-    State.add(this_node, %{host: "new.host"})
-    State.remove(this_node)
+    assert_receive {:change, ^listener_pid, [{^this_node, %{}}]}
 
-    assert_receive {:added, ^this_node, %{host: "old.host"}}
-    assert_receive {:removed, ^this_node, %{host: "old.host"}}
-    assert_receive {:added, ^this_node, %{host: "new.host"}}
+    State.add(this_node, %{})
+
+    refute_receive {:change, ^listener_pid, [{^this_node, %{}}]}
   end
 end

@@ -6,7 +6,42 @@ Node service discovery using a Redis backend.
 
 ## Usage
 
-Add Rediscovery to your supervision tree (ideally near the end to make sure other processes that your app requires are started):
+### Listener
+
+Rediscovery requires a listener. This module gets called whenever node changes are detected. The module must provide the following callbacks:
+
+- `list/0` - This returns the list of nodes that the listener knows about.
+- `add/1` - This receives `[{node, metadata}]` whenever Rediscovery detects that a node has been added.
+- `remove/1` - This receives `[node]` whenever Rediscovery detects that a node should be removed.
+
+An example listener could look like the following:
+
+```elixir
+defmodule MyApp.Listener do
+  use Rediscovery.Listener
+  
+  @impl true
+  def list do
+    Node.list()
+  end
+  
+  @impl true
+  def add(nodes) do
+    Enum.each(nodes, fn {node, _metadata} ->
+      Node.connect(node)
+    end
+  end
+  
+  @impl true
+  def remove(nodes) do
+    Enum.each(&Node.disconnect/1)
+  end
+end
+```
+
+### Supervision Tree
+
+Add Rediscovery, followed by any Listener modules to your supervision tree (ideally near the end to make sure other processes that your app requires are started):
 
 ```elixir
 children = [
@@ -14,35 +49,9 @@ children = [
     host: "my.redis-host.com",
     port: 6379,
     prefix: "my_app:my_environment",
-    node_change_fn: &MyApp.node_change/3
-  ]}
+  ]},
+  MyApp.Listener
 ]
 ```
 
-See `lib/rediscovery.ex` for other options.
-
-## Node Change
-
-Rediscovery accepts a function to be called when node changes occur.
-
-The node change function receives the following arguments:
-
-- `:reset, nil, %{}` - This indicates the Rediscovery state was reset (either on initial startup or if the supervisor restarts the state process).
-- `:added, node, metadata` - When a node is added
-- `:removed, node, metadata` - When a node is removed
-
-```elixir
-defmodule MyApp do
-  def node_change(:reset, _, _) do
-    Enum.each(Node.list(), &Node.disconnect/1)
-  end
-
-  def node_change(:added, node, _metadata) do
-    Node.connect(node)
-  end
-
-  def node_change(:removed, node, _metadata) do
-    Node.disconnect(node)
-  end
-end
-```
+See `lib/rediscovery.ex` for other options for Rediscovery.

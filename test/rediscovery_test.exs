@@ -1,10 +1,10 @@
 defmodule RediscoveryTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: false
   doctest Rediscovery
 
   test "Finds other nodes" do
     [node1, node2, node3] =
-      LocalCluster.start_nodes(:test, 3,
+      LocalCluster.start_nodes(:test1, 3,
         applications: [:rediscovery],
         environment: [
           rediscovery: [
@@ -19,21 +19,21 @@ defmodule RediscoveryTest do
       )
 
     eventually(fn ->
-      compare([node1, node2, node3], Map.keys(:rpc.call(node1, Rediscovery, :state, [])))
+      compare([node1, node2, node3], nodes_in_node_state(node1))
     end)
 
     eventually(fn ->
-      compare([node1, node2, node3], Map.keys(:rpc.call(node2, Rediscovery, :state, [])))
+      compare([node1, node2, node3], nodes_in_node_state(node2))
     end)
 
     eventually(fn ->
-      compare([node1, node2, node3], Map.keys(:rpc.call(node3, Rediscovery, :state, [])))
+      compare([node1, node2, node3], nodes_in_node_state(node3))
     end)
   end
 
   test "Updates when nodes are removed" do
     [node1, node2] =
-      LocalCluster.start_nodes(:test, 2,
+      LocalCluster.start_nodes(:test2, 2,
         applications: [:rediscovery],
         environment: [
           rediscovery: [
@@ -41,21 +41,28 @@ defmodule RediscoveryTest do
             port: 6379,
             prefix: "myapp:test",
             update_interval: 100,
-            key_expiration: 120,
+            key_expiration: 110,
             poll_interval: 100
           ]
         ]
       )
 
     eventually(fn ->
-      compare([node1, node2], Map.keys(:rpc.call(node1, Rediscovery, :state, [])))
+      compare([node1, node2], nodes_in_node_state(node1))
     end)
 
     :ok = LocalCluster.stop_nodes([node2])
 
     eventually(fn ->
-      compare([node1], Map.keys(:rpc.call(node1, Rediscovery, :state, [])))
+      :ok = :rpc.call(node1, Rediscovery.Poller, :poll, [])
+      compare([node1], nodes_in_node_state(node1))
     end)
+  end
+
+  def nodes_in_node_state(node) do
+    node
+    |> :rpc.call(Rediscovery, :state, [])
+    |> Enum.map(&elem(&1, 0))
   end
 
   def compare(nodes1, nodes2) do

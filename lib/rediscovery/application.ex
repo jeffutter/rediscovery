@@ -6,11 +6,14 @@ defmodule Rediscovery.Application do
   def start(_type, _args) do
     case Node.self() do
       :"manager@127.0.0.1" ->
-        :ignore
+        # Logger.configure(level: :debug, handle_otp_reports: true, handle_sasl_reports: true)
+
         children = []
         Supervisor.start_link(children, strategy: :one_for_one)
 
       _ ->
+        # Logger.configure(level: :debug, handle_otp_reports: true, handle_sasl_reports: true)
+
         host = Application.fetch_env!(:rediscovery, :host)
         port = Application.fetch_env!(:rediscovery, :port)
         prefix = Application.fetch_env!(:rediscovery, :prefix)

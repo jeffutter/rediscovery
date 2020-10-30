@@ -18,18 +18,14 @@ defmodule Rediscovery.Supervisor do
     update_interval = Keyword.fetch!(opts, :update_interval)
     key_expiration = Keyword.fetch!(opts, :key_expiration)
     metadata_fn = Keyword.fetch!(opts, :metadata_fn)
-    node_change_fn = Keyword.fetch!(opts, :node_change_fn)
 
     redix = Rediscovery.Redix
     pubsub = Rediscovery.Redix.PubSub
 
     children = [
       {Redix, host: host, port: port, name: redix},
-      %{
-        id: Redix.PubSub,
-        start: {Redix.PubSub, :start_link, [[host: host, port: port, name: pubsub]]}
-      },
-      {Rediscovery.State, %{node_change_fn: node_change_fn}},
+      %{id: Redix.PubSub, start: {Redix.PubSub, :start_link, [[host: host, port: port, name: pubsub]]}},
+      Rediscovery.State,
       {Rediscovery.PubSub, %{redix: redix, prefix: prefix, pubsub: pubsub}},
       {Rediscovery.Poller, %{redix: redix, prefix: prefix, poll_interval: poll_interval}},
       {Rediscovery.Updater,

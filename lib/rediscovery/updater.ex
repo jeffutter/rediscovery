@@ -55,7 +55,7 @@ defmodule Rediscovery.Updater do
   def terminate(reason, _state, %{redix: redix, prefix: prefix}) do
     key = prefix <> ":" <> to_string(Node.self())
 
-    {:ok, "OK"} = Redix.command(redix, ["DEL", key])
+    {:ok, _} = Redix.command(redix, ["DEL", key])
     debug("Updater: DEL #{key}")
 
     error("Updater: exiting - #{inspect(reason)}")

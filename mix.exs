@@ -1,7 +1,7 @@
 defmodule Rediscovery.MixProject do
   use Mix.Project
 
-  @version "0.2.0"
+  @version "0.3.0"
 
   def project do
     [
@@ -24,7 +24,7 @@ defmodule Rediscovery.MixProject do
     case Mix.env() do
       :test ->
         [
-          extra_applications: [:logger],
+          extra_applications: [:sasl, :logger],
           mod: {Rediscovery.Application, []}
         ]
 

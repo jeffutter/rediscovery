@@ -3,8 +3,8 @@ defmodule Rediscovery.State do
 
   import Rediscovery.Logger
 
-  def start_link(opts) do
-    GenServer.start_link(__MODULE__, {:sets.new(), opts}, name: __MODULE__)
+  def start_link(_) do
+    GenServer.start_link(__MODULE__, :sets.new(), name: __MODULE__)
   end
 
   def add(node, metadata) do
@@ -15,92 +15,80 @@ defmodule Rediscovery.State do
     GenServer.call(__MODULE__, {:remove, node})
   end
 
+  def replace(nodes) do
+    GenServer.call(__MODULE__, {:replace, nodes})
+  end
+
   def state do
     GenServer.call(__MODULE__, :state)
   end
 
   @impl true
   def init(state) do
-    {:ok, state, {:continue, :reset}}
+    debug("State: init")
+    {:ok, state}
   end
 
   @impl true
-  def handle_continue(:reset, {_nodes, opts} = state) do
-    node_change(opts, :reset, nil, %{})
-
-    {:noreply, state}
-  end
-
-  @impl true
-  def handle_call({:add, node, metadata}, _from, {nodes, opts}) do
+  def handle_call({:add, node, metadata}, _from, nodes) do
     filtered_nodes = remove_node(node, nodes)
     new_nodes = :sets.add_element({node, metadata}, filtered_nodes)
-    handle_diffs(nodes, new_nodes, opts)
+    handle_diffs(nodes, new_nodes)
     count_nodes(new_nodes)
-    {:reply, :ok, {new_nodes, opts}}
+    {:reply, :ok, new_nodes}
   end
 
   @impl true
-  def handle_call({:remove, node}, _from, {nodes, opts}) do
+  def handle_call({:replace, new_nodes}, _from, old_nodes) do
+    new_nodes = :sets.from_list(new_nodes)
+    handle_diffs(old_nodes, new_nodes)
+    count_nodes(new_nodes)
+    {:reply, :ok, new_nodes}
+  end
+
+  @impl true
+  def handle_call({:remove, node}, _from, nodes) do
     filtered_nodes = remove_node(node, nodes)
-    handle_diffs(nodes, filtered_nodes, opts)
+    handle_diffs(nodes, filtered_nodes)
     count_nodes(filtered_nodes)
-    {:reply, :ok, {filtered_nodes, opts}}
+    {:reply, :ok, filtered_nodes}
   end
 
   @impl true
-  def handle_call(:state, _from, {nodes, opts}) do
-    {:reply, Map.new(:sets.to_list(nodes)), {nodes, opts}}
+  def handle_call(:state, _from, nodes) do
+    {:reply, :sets.to_list(nodes), nodes}
   end
 
   defp remove_node(node, nodes) do
     :sets.filter(&(!match?({^node, _}, &1)), nodes)
   end
 
-  defp handle_diffs(old_nodes, new_nodes, opts) do
-    same = :sets.intersection([old_nodes, new_nodes])
-    added = :sets.subtract(new_nodes, same)
-    removed = :sets.subtract(old_nodes, same)
+  defp handle_diffs(old_nodes, new_nodes) do
+    if old_nodes != new_nodes do
+      nodes = :sets.to_list(new_nodes)
 
-    if removed != :sets.new() do
-      removed
-      |> :sets.to_list()
-      |> Enum.each(fn {node, metadata} ->
-        info("State: Removing Node: #{node}")
-        node_change(opts, :removed, node, metadata)
-      end)
-    end
+      start_time = System.monotonic_time()
 
-    if added != :sets.new() do
-      added
-      |> :sets.to_list()
-      |> Enum.each(fn {node, metadata} ->
-        info("State: Adding Node: #{node}")
-        node_change(opts, :added, node, metadata)
-      end)
+      :telemetry.execute(
+        [:rediscovery, :state, :broadcast, :start],
+        %{system_time: System.system_time()},
+        %{}
+      )
+
+      debug("State: Broadcasting new node list -#{inspect(nodes)}")
+
+      Rediscovery.Listener.change(:sets.to_list(new_nodes))
+
+      end_time = System.monotonic_time()
+
+      :telemetry.execute(
+        [:rediscovery, :state, :broadcast, :stop],
+        %{duration: end_time - start_time},
+        %{}
+      )
     end
 
     :ok
-  end
-
-  defp node_change(%{node_change_fn: node_change_fn}, change, node, metadata) do
-    start_time = System.monotonic_time()
-
-    :telemetry.execute(
-      [:rediscovery, :node_change, :start],
-      %{system_time: System.system_time()},
-      %{change: change}
-    )
-
-    node_change_fn.(change, node, metadata)
-
-    end_time = System.monotonic_time()
-
-    :telemetry.execute(
-      [:rediscovery, :node_change, :stop],
-      %{duration: end_time - start_time},
-      %{change: change}
-    )
   end
 
   defp count_nodes(nodes) do
