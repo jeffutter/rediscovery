@@ -39,7 +39,7 @@ defmodule Rediscovery.Updater do
     end
   end
 
-  def terminate(reason, _state, %{redix: redix, prefix: prefix}) do
+  def terminate(reason, %{redix: redix, prefix: prefix}) do
     key = prefix <> ":" <> to_string(Node.self())
 
     case Redix.command(redix, ["DEL", key]) do
