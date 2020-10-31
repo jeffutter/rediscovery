@@ -1,12 +1,16 @@
 defmodule Rediscovery.MixProject do
   use Mix.Project
 
-  @version "0.3.1"
+  @name "Rediscovery"
+  @version "0.3.2"
+  @repo_url "https://github.com/jeffutter/rediscovery"
 
   def project do
     [
       app: :rediscovery,
+      name: @name,
       version: @version,
+      source_url: @repo_url,
       description: "Node discovery using redis",
       elixir: "~> 1.10",
       start_permanent: Mix.env() == :prod,
@@ -56,10 +60,10 @@ defmodule Rediscovery.MixProject do
 
   defp docs do
     [
-      main: "readme",
-      name: "Rediscovery",
+      main: @name,
+      name: @name,
       canonical: "http://hexdocs.pm/rediscovery",
-      source_url: "https://github.com/jeffutter/rediscovery"
+      source_url: @repo_url
     ]
   end
 end
