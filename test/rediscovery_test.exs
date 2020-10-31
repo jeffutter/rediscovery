@@ -54,7 +54,7 @@ defmodule RediscoveryTest do
     :ok = LocalCluster.stop_nodes([node2])
 
     eventually(fn ->
-      :ok = :rpc.call(node1, Rediscovery.Poller, :poll, [])
+      GenServer.call({Rediscovery.Poller, node1}, :renew)
       compare([node1], nodes_in_node_state(node1))
     end)
   end

@@ -1,55 +1,42 @@
 defmodule Rediscovery.Updater do
-  @behaviour :gen_statem
+  use GenServer
 
   import Rediscovery.Logger
 
-  def child_spec(opts) do
-    %{
-      id: __MODULE__,
-      type: :worker,
-      start: {__MODULE__, :start_link, [opts]}
-    }
-  end
-
   def start_link(opts) do
-    :gen_statem.start_link({:local, __MODULE__}, __MODULE__, opts, [])
-  end
-
-  def callback_mode do
-    [:handle_event_function]
+    GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
   def init(opts) do
     Process.flag(:trap_exit, true)
 
-    actions = [{:timeout, 0, :update}]
-
-    {:ok, :waiting, opts, actions}
+    {:ok, opts, {:continue, :update}}
   end
 
-  def handle_event(
-        :timeout,
-        :update,
-        :waiting,
-        %{
-          prefix: prefix,
-          redix: redix,
-          update_interval: update_interval,
-          key_expiration: key_expiration,
-          metadata_fn: metadata_fn
-        } = opts
-      ) do
+  def handle_continue(:update, %{update_interval: update_interval} = opts) do
+    update(opts)
+    schedule(update_interval)
+    {:noreply, opts}
+  end
+
+  def handle_info(:update, %{update_interval: update_interval} = opts) do
+    update(opts)
+    schedule(update_interval)
+    {:noreply, opts}
+  end
+
+  defp update(%{prefix: prefix, redix: redix, key_expiration: key_expiration, metadata_fn: metadata_fn}) do
     metadata = metadata_fn.()
 
     key = prefix <> ":" <> to_string(Node.self())
 
-    {:ok, "OK"} = Redix.command(redix, ["SET", key, :erlang.term_to_binary(metadata), "PX", key_expiration])
+    case Redix.command(redix, ["SET", key, :erlang.term_to_binary(metadata), "PX", key_expiration]) do
+      {:ok, "OK"} ->
+        debug("Updater: SET #{key} = #{inspect(metadata)}")
 
-    debug("Updater: SET #{key} = #{inspect(metadata)}")
-
-    actions = [{:timeout, update_interval, :update}]
-
-    {:next_state, :waiting, opts, actions}
+      {:error, reason} ->
+        error("Updater: failed to fetch keys: #{inspect(reason)}")
+    end
   end
 
   def terminate(reason, _state, %{redix: redix, prefix: prefix}) do
@@ -61,5 +48,9 @@ defmodule Rediscovery.Updater do
     error("Updater: exiting - #{inspect(reason)}")
 
     :ok
+  end
+
+  defp schedule(interval) do
+    Process.send_after(self(), :update, interval)
   end
 end

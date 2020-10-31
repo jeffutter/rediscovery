@@ -1,77 +1,69 @@
 defmodule Rediscovery.Poller do
-  @behaviour :gen_statem
+  use GenServer
 
   alias Rediscovery.State
 
   import Rediscovery.Logger
 
-  def child_spec(opts) do
-    %{
-      id: __MODULE__,
-      type: :worker,
-      start: {__MODULE__, :start_link, [opts]}
-    }
-  end
-
   def start_link(opts) do
-    :gen_statem.start_link({:local, __MODULE__}, __MODULE__, opts, [])
+    GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
-  def poll do
-    :gen_statem.call(__MODULE__, :poll)
-  end
-
-  def callback_mode do
-    [:handle_event_function]
+  def renew do
+    GenServer.call(__MODULE__, :renew)
   end
 
   def init(opts) do
-    actions = [{:timeout, 0, :update}]
-
-    {:ok, :waiting, opts, actions}
+    {:ok, opts, {:continue, :renew}}
   end
 
-  def handle_event(:timeout, :update, :waiting, %{poll_interval: poll_interval} = opts) do
-    poll(opts)
-
-    actions = [{:timeout, poll_interval, :update}]
-
-    {:next_state, :waiting, opts, actions}
+  def handle_continue(:renew, %{poll_interval: poll_interval} = opts) do
+    renew(opts)
+    schedule(poll_interval)
+    {:noreply, opts}
   end
 
-  def handle_event({:call, from}, :poll, :waiting, opts) do
-    poll(opts)
-
-    {:next_state, :waiting, opts, [{:reply, from, :ok}]}
+  def handle_call(:renew, _from, opts) do
+    renew(opts)
+    {:reply, :ok, opts}
   end
 
-  defp poll(%{redix: redix, prefix: prefix}) do
-    debug("Poller: Polling")
+  def handle_info(:renew, %{poll_interval: poll_interval} = opts) do
+    renew(opts)
+    schedule(poll_interval)
+    {:noreply, opts}
+  end
+
+  defp schedule(interval) do
+    Process.send_after(self(), :renew, interval)
+  end
+
+  defp renew(%{redix: redix, prefix: prefix}) do
+    debug("Poller: Renewing")
 
     key = prefix <> ":*"
 
-    {:ok, keys} = Redix.command(redix, ["KEYS", key])
+    case Redix.command(redix, ["KEYS", key]) do
+      {:ok, []} ->
+        []
 
-    nodes =
-      case keys do
-        [] ->
-          []
+      {:ok, keys} ->
+        {:ok, res} = Redix.command(redix, ["MGET" | keys])
 
-        keys ->
-          {:ok, res} = Redix.command(redix, ["MGET" | keys])
+        keys
+        |> Enum.zip(res)
+        |> Enum.map(fn {key, data} ->
+          node =
+            key
+            |> String.trim_leading(prefix <> ":")
+            |> String.to_atom()
 
-          keys
-          |> Enum.zip(res)
-          |> Enum.map(fn {key, data} ->
-            node =
-              key
-              |> String.trim_leading(prefix <> ":")
-              |> String.to_atom()
+          {node, :erlang.binary_to_term(data)}
+        end)
+        |> State.replace()
 
-            {node, :erlang.binary_to_term(data)}
-          end)
-      end
-
-    :ok = State.replace(nodes)
+      {:error, reason} ->
+        error("Poller: failed to fetch keys: #{inspect(reason)}")
+    end
   end
 end
