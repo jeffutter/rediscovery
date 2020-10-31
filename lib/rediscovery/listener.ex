@@ -4,7 +4,7 @@ defmodule Rediscovery.Listener do
   @callback remove(list(node())) :: any()
 
   def change(nodes) when is_list(nodes) do
-    case :pg2.get_local_members(Rediscovery.Listener) do
+    case :pg2.get_local_members(__MODULE__) do
       {:error, {:no_such_group, _}} -> :ok
       pids -> Enum.each(pids, &GenServer.cast(&1, {:change, nodes}))
     end
@@ -22,13 +22,13 @@ defmodule Rediscovery.Listener do
 
       @impl true
       def init(nil) do
-        :pg2.create(Rediscovery.Listener)
-        :ok = :pg2.join(Rediscovery.Listener, self())
+        :pg2.create(unquote(__MODULE__))
+        :ok = :pg2.join(unquote(__MODULE__), self())
         {:ok, nil, {:continue, :setup}}
       end
 
-      def change(nodes) when is_list(nodes) do
-        GenServer.cast(__MODULE__, {:change, nodes})
+      def change(server \\ __MODULE__, nodes) when is_list(nodes) do
+        GenServer.cast(server, {:change, nodes})
       end
 
       @impl GenServer

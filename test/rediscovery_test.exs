@@ -60,8 +60,8 @@ defmodule RediscoveryTest do
   end
 
   def nodes_in_node_state(node) do
-    node
-    |> :rpc.call(Rediscovery, :state, [])
+    {Rediscovery.State, node}
+    |> Rediscovery.state()
     |> Enum.map(&elem(&1, 0))
   end
 

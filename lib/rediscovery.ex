@@ -53,7 +53,6 @@ defmodule Rediscovery do
     Rediscovery.Supervisor.start_link(opts)
   end
 
-  def state do
-    State.state()
-  end
+  defdelegate state(), to: State
+  defdelegate state(server), to: State
 end

@@ -7,20 +7,20 @@ defmodule Rediscovery.State do
     GenServer.start_link(__MODULE__, :sets.new(), name: __MODULE__)
   end
 
-  def add(node, metadata) do
-    GenServer.call(__MODULE__, {:add, node, metadata})
+  def add(server \\ __MODULE__, node, metadata) do
+    GenServer.call(server, {:add, node, metadata})
   end
 
-  def remove(node) do
-    GenServer.call(__MODULE__, {:remove, node})
+  def remove(server \\ __MODULE__, node) do
+    GenServer.call(server, {:remove, node})
   end
 
-  def replace(nodes) do
-    GenServer.call(__MODULE__, {:replace, nodes})
+  def replace(server \\ __MODULE__, nodes) do
+    GenServer.call(server, {:replace, nodes})
   end
 
-  def state do
-    GenServer.call(__MODULE__, :state)
+  def state(server \\ __MODULE__) do
+    GenServer.call(server, :state)
   end
 
   @impl true

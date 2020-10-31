@@ -9,8 +9,8 @@ defmodule Rediscovery.Poller do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
-  def renew do
-    GenServer.call(__MODULE__, :renew)
+  def renew(server \\ __MODULE__) do
+    GenServer.call(server, :renew)
   end
 
   def init(opts) do
@@ -18,18 +18,18 @@ defmodule Rediscovery.Poller do
   end
 
   def handle_continue(:renew, %{poll_interval: poll_interval} = opts) do
-    renew(opts)
+    do_renew(opts)
     schedule(poll_interval)
     {:noreply, opts}
   end
 
   def handle_call(:renew, _from, opts) do
-    renew(opts)
+    do_renew(opts)
     {:reply, :ok, opts}
   end
 
   def handle_info(:renew, %{poll_interval: poll_interval} = opts) do
-    renew(opts)
+    do_renew(opts)
     schedule(poll_interval)
     {:noreply, opts}
   end
@@ -38,7 +38,7 @@ defmodule Rediscovery.Poller do
     Process.send_after(self(), :renew, interval)
   end
 
-  defp renew(%{redix: redix, prefix: prefix}) do
+  defp do_renew(%{redix: redix, prefix: prefix}) do
     debug("Poller: Renewing")
 
     key = prefix <> ":*"
