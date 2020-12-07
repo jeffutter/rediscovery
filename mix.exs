@@ -2,7 +2,7 @@ defmodule Rediscovery.MixProject do
   use Mix.Project
 
   @name "Rediscovery"
-  @version "0.3.3"
+  @version "0.4.0"
   @repo_url "https://github.com/jeffutter/rediscovery"
 
   def project do

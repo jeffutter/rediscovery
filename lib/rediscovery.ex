@@ -25,6 +25,10 @@ defmodule Rediscovery do
       type: :non_neg_integer,
       default: 10_000
     ],
+    pub_sub: [
+      type: :boolean,
+      default: false
+    ],
     update_interval: [
       type: :non_neg_integer,
       default: 10_000
