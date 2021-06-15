@@ -1,7 +1,7 @@
 defmodule Rediscovery.StateTest do
   use ExUnit.Case, async: false
 
-  alias Rediscovery.State
+  alias Rediscovery.{ProcessGroup, State}
 
   defmodule FakeListener do
     use GenServer
@@ -11,8 +11,8 @@ defmodule Rediscovery.StateTest do
     end
 
     def init(pid) do
-      :pg2.create(Rediscovery.Listener)
-      :ok = :pg2.join(Rediscovery.Listener, self())
+      ProcessGroup.create(Rediscovery.Listener)
+      :ok = ProcessGroup.join(Rediscovery.Listener, self())
       {:ok, pid}
     end
 

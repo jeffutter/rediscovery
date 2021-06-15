@@ -44,7 +44,7 @@ defmodule Rediscovery.ListenerTest do
     assert_receive {:remove, [:fake1@node]}
   end
 
-  test "Receives events cast from :pg2" do
+  test "Receives events cast from :pg" do
     :persistent_term.put({FakeListener, :test_pid}, self())
     on_exit(fn -> :persistent_term.erase({FakeListener, :test_pid}) end)
     start_supervised(Rediscovery.State)
