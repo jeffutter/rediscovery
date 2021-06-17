@@ -9,6 +9,7 @@ defmodule RediscoveryTest do
         environment: [
           rediscovery: [
             host: System.get_env("REDIS_HOST", "localhost"),
+            port: String.to_integer("REDIS_PORT", "6379"),
             port: String.to_integer(System.get_env("REDIS_PORT", "6379")),
             prefix: "myapp:test",
             update_interval: 1_000,
