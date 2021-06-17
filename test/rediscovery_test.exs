@@ -8,8 +8,8 @@ defmodule RediscoveryTest do
         applications: [:rediscovery],
         environment: [
           rediscovery: [
-            host: "localhost",
-            port: 6379,
+            host: System.get_env("REDIS_HOST", "localhost"),
+            port: String.to_integer(System.get_env("REDIS_PORT", "6379")),
             prefix: "myapp:test",
             update_interval: 1_000,
             key_expiration: 1_050,
@@ -37,8 +37,8 @@ defmodule RediscoveryTest do
         applications: [:rediscovery],
         environment: [
           rediscovery: [
-            host: "localhost",
-            port: 6379,
+            host: System.get_env("REDIS_HOST", "localhost"),
+            port: String.to_integer(System.get_env("REDIS_PORT", "6379")),
             prefix: "myapp:test",
             update_interval: 100,
             key_expiration: 110,
