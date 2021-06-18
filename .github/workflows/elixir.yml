@@ -11,7 +11,7 @@ jobs:
 
     name: Build and test
     runs-on: ubuntu-latest
-    
+
     services:
       redis:
         image: redis
@@ -26,7 +26,12 @@ jobs:
     strategy:
       matrix:
         elixir: [1.10.4, 1.11.4, 1.12.1]
-        otp: [22.3, 23.3]
+        otp: [22.3, 23.3, 24.0]
+        exclude:
+          - otp: 24.0
+            elixir: 1.10.4
+          - otp: 24.0
+            elixir: 1.11.4
 
     steps:
     - uses: actions/checkout@v2
@@ -59,5 +64,5 @@ jobs:
     - name: Run tests
       run: mix test
       env:
-        REDIS_HOST: localhost 
+        REDIS_HOST: localhost
         REDIS_PORT: 6379
