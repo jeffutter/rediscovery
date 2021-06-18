@@ -7,10 +7,24 @@ defmodule Rediscovery.ProcessGroup do
   @otp_version :erlang.system_info(:otp_release) |> to_string() |> String.to_integer()
 
   if @otp_version >= 23 do
+    def start do
+      case :pg.start_link() do
+        {:ok, _} ->
+          :ok
+
+        {:error, {:already_started, _}} ->
+          :ok
+
+        error ->
+          error
+      end
+    end
+
     def create(name), do: :pg.start(name) |> elem(0)
     def get_local_members(name), do: :pg.get_local_members(name)
     def join(group_name, pid), do: :pg.join(group_name, pid)
   else
+    def start, do: :ok
     def create(name), do: :pg2.create(name)
     def get_local_members(name), do: :pg2.get_local_members(name)
     def join(group_name, pid), do: :pg2.join(group_name, pid)

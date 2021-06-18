@@ -11,6 +11,7 @@ defmodule Rediscovery.StateTest do
     end
 
     def init(pid) do
+      :ok = ProcessGroup.start()
       ProcessGroup.create(Rediscovery.Listener)
       :ok = ProcessGroup.join(Rediscovery.Listener, self())
       {:ok, pid}

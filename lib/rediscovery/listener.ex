@@ -23,6 +23,7 @@ defmodule Rediscovery.Listener do
 
       @impl true
       def init(nil) do
+        :ok = ProcessGroup.start()
         ProcessGroup.create(unquote(__MODULE__))
         :ok = ProcessGroup.join(unquote(__MODULE__), self())
         {:ok, nil, {:continue, :setup}}
